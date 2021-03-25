@@ -1,0 +1,367 @@
+classdef Covid < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                  matlab.ui.Figure
+        UIAxes                    matlab.ui.control.UIAxes
+        CountriesListBoxLabel     matlab.ui.control.Label
+        CountriesListBox          matlab.ui.control.ListBox
+        StatesListBoxLabel        matlab.ui.control.Label
+        StatesListBox             matlab.ui.control.ListBox
+        AverageofdaysSliderLabel  matlab.ui.control.Label
+        AverageofdaysSlider       matlab.ui.control.Slider
+        DatatoPlotButtonGroup     matlab.ui.container.ButtonGroup
+        CasesButton               matlab.ui.control.RadioButton
+        DeathsButton              matlab.ui.control.RadioButton
+        BothButton                matlab.ui.control.RadioButton
+        OptionButtonGroup         matlab.ui.container.ButtonGroup
+        CumulativeButton          matlab.ui.control.RadioButton
+        DailyButton               matlab.ui.control.RadioButton
+    end
+
+    
+    properties (Access = private)
+        x % Description
+        mean_window
+        data_button
+        option_button
+        foundc
+        founds
+        foundg
+    end
+    
+    methods (Access = private)
+        
+        function listbox(app)
+            app.CountriesListBox.Items=[(app.x.countries_obj(1:end).name)]';
+            app.CountriesListBox.Items=horzcat({'All'},app.CountriesListBox.Items);
+            
+        end
+        function listbox2(app,y)
+            if isempty(y)
+                app.StatesListBox.Items={};
+                return
+            end
+            app.StatesListBox.Items=[y.states_obj(1:end).name]';
+            app.StatesListBox.Items=horzcat({'All'},app.StatesListBox.Items);
+        end
+        function plott(app,obj,data1,data2,data11,data12,slider,button1,button2)
+
+            if isempty(button1)
+                button1="asaa";
+            end
+            if isempty(button2)
+                button2="asaa";
+            end
+            if isempty(slider)
+                slider=1;
+            end
+            
+            cla(app.UIAxes,'reset')
+            if button1~="Both" && obj.name~="Global"
+                title(app.UIAxes, "Number of "+ button2+" Covid-19 "+button1+" in "+ obj.name)
+            elseif obj.name=="Global"
+                if button1=="Both"
+                    title(app.UIAxes, "Number of  "+ button2+ " Covid-19 Cases and Deaths in the world")
+                
+                else    
+                    title(app.UIAxes, "Number of Covid-19 "+ button2+ " " +button1+" in the world")
+                end
+                
+            else
+                title(app.UIAxes, "Number of "+ button2+" Covid-19 Cases and Deaths  in "+ obj.name)
+            end
+            app.UIAxes.XGrid = 'on';
+            app.UIAxes.YGrid = 'on';
+            xlabel(app.UIAxes, 'Date')
+            ylabel(app.UIAxes, 'Number of cases')
+            
+
+            hold(app.UIAxes,'on')
+            
+            
+            switch button1
+                case 'Cases'
+                    switch button2 
+                        case 'Cumulative'
+                            bar(app.UIAxes,app.x.date,movmean(data1,slider))
+                        case 'Daily'
+                            bar(app.UIAxes,app.x.date,movmean(data11,slider))
+                        otherwise
+                            bar(app.UIAxes,app.x.date,movmean(data1,slider))
+                            
+                    end
+                case 'Deaths'
+                    switch button2
+                        case 'Cumulative'
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data2,slider),'LineWidth',2)
+                        case 'Daily'
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data12,slider),'LineWidth',2)
+                        otherwise
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data2,slider),'LineWidth',2)
+                    end
+                case 'Both'
+                    switch button2
+                        case 'Cumulative'
+                            bar(app.UIAxes,app.x.date,movmean(data1,slider))
+                            yyaxis(app.UIAxes,'right')
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data2,slider),'LineWidth',2)
+                            
+                        case 'Daily'
+                            bar(app.UIAxes,app.x.date,movmean(data11,slider))
+                            yyaxis(app.UIAxes,'right')
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data12,slider),'LineWidth',2)
+                        otherwise
+                            bar(app.UIAxes,app.x.date,movmean(data1,slider))
+                            yyaxis(app.UIAxes,'right')
+                            ylabel(app.UIAxes," Number of Deaths")
+                            plot(app.UIAxes,app.x.date,movmean(data2,slider),'LineWidth',2)
+                            
+                    end
+                otherwise
+                    bar(app.UIAxes,app.x.date,movmean(data1,slider))
+                    plot(app.UIAxes,app.x.date,movmean(data2,slider),'LineWidth',2)
+                    
+                    
+            end
+            
+            
+        end
+    
+    end
+    
+
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function Startup(app)
+            load 'covid_data.mat' covid_data
+            app.x=childs();
+            app.x.main();
+            app.foundc=app.x;
+            
+            
+            app.option_button='Cumulative';
+            app.data_button='Cases';
+            app.mean_window=5;
+            app.plott(app.foundc,app.foundc.cases_cumu,app.foundc.deaths_cumu,app.foundc.cases_daily,app.foundc.deaths_daily,app.mean_window,app.data_button,app.option_button)
+            app.listbox()
+            app.listbox2([])
+            
+            
+            
+            
+            
+            
+        end
+
+        % Value changed function: CountriesListBox
+        function country(app, event)
+            value = app.CountriesListBox.Value;
+            
+            for ii = 1:length(app.x.countries_obj)
+                if string(value)==string(app.x.countries_obj(ii).name)
+                    app.foundc=app.x.countries_obj(ii);
+                    if ~isempty(app.x.countries_obj(ii).states_obj)
+                        app.listbox2(app.x.countries_obj(ii))
+                        app.plott(app.foundc,app.x.countries_obj(ii).cases_cumu,app.x.countries_obj(ii).deaths_cumu,app.x.countries_obj(ii).cases_daily,app.x.countries_obj(ii).deaths_daily,app.mean_window,app.data_button,app.option_button)
+                        
+                        break
+                    else
+                        app.listbox2([])
+                        app.plott(app.foundc,app.x.countries_obj(ii).cases_cumu,app.x.countries_obj(ii).deaths_cumu,app.x.countries_obj(ii).cases_daily,app.x.countries_obj(ii).deaths_daily,app.mean_window,app.data_button,app.option_button)
+                        break
+                    end 
+                elseif string(value)=="All"
+                    app.foundc=app.x;
+                    app.plott(app.foundc,app.foundc.cases_cumu,app.foundc.deaths_cumu,app.foundc.cases_daily,app.foundc.deaths_daily,app.mean_window,app.data_button,app.option_button)
+                    
+                end
+            end
+            
+        end
+
+        % Value changing function: AverageofdaysSlider
+        function slider_fn(app, event)
+            changingValue = event.Value;
+            app.mean_window=changingValue;
+            cla(app.UIAxes)
+            app.plott(app.foundc,app.foundc.cases_cumu,app.foundc.deaths_cumu,app.foundc.cases_daily,app.foundc.deaths_daily,app.mean_window,app.data_button,app.option_button)   
+        end
+
+        % Selection changed function: DatatoPlotButtonGroup
+        function data_to_plot_radio(app, event)
+            selectedButton = app.DatatoPlotButtonGroup.SelectedObject;
+            app.data_button=selectedButton.Text;
+            app.data_button=event.NewValue.Text;
+            app.plott(app.foundc,app.foundc.cases_cumu,app.foundc.deaths_cumu,app.foundc.cases_daily,app.foundc.deaths_daily,app.mean_window,app.data_button,app.option_button)
+        end
+
+        % Selection changed function: OptionButtonGroup
+        function OptionButtonGroupSelectionChanged(app, event)
+            selectedButton = app.OptionButtonGroup.SelectedObject;
+            app.option_button=selectedButton.Text;
+            app.option_button=event.NewValue.Text;
+            app.plott(app.foundc,app.foundc.cases_cumu,app.foundc.deaths_cumu,app.foundc.cases_daily,app.foundc.deaths_daily,app.mean_window,app.data_button,app.option_button)
+        end
+
+        % Value changed function: StatesListBox
+        function StatesListBoxValueChanged(app, event)
+            value = app.StatesListBox.Value;
+            for ii =1:length(app.foundc.states_obj)
+                if string(value)==string(app.foundc.states_obj(ii).name)
+                    app.founds=app.foundc.states_obj(ii);
+                    break
+                elseif string(value)=="All"
+                    app.founds=app.foundc;
+                    break
+                end
+            end
+            app.plott(app.founds,app.founds.cases_cumu,app.founds.deaths_cumu,app.founds.cases_daily,app.founds.deaths_daily,app.mean_window,app.data_button,app.option_button)
+            
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure
+            app.UIFigure = uifigure;
+            app.UIFigure.Color = [0.6784 0.8588 0.7529];
+            app.UIFigure.Position = [100 100 827 656];
+            app.UIFigure.Name = 'UI Figure';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, 'Covid-19 cases')
+            xlabel(app.UIAxes, 'Date')
+            ylabel(app.UIAxes, 'Number of cases')
+            app.UIAxes.PlotBoxAspectRatio = [1 0.421368547418968 0.421368547418968];
+            app.UIAxes.XGrid = 'on';
+            app.UIAxes.YGrid = 'on';
+            app.UIAxes.BackgroundColor = [0.902 0.6745 0.6745];
+            app.UIAxes.Position = [1 321 827 336];
+
+            % Create CountriesListBoxLabel
+            app.CountriesListBoxLabel = uilabel(app.UIFigure);
+            app.CountriesListBoxLabel.BackgroundColor = [0.8549 0.8745 0.9686];
+            app.CountriesListBoxLabel.HorizontalAlignment = 'right';
+            app.CountriesListBoxLabel.Position = [11 260 57 22];
+            app.CountriesListBoxLabel.Text = 'Countries';
+
+            % Create CountriesListBox
+            app.CountriesListBox = uilistbox(app.UIFigure);
+            app.CountriesListBox.Items = {};
+            app.CountriesListBox.ValueChangedFcn = createCallbackFcn(app, @country, true);
+            app.CountriesListBox.BackgroundColor = [0.8549 0.8745 0.9686];
+            app.CountriesListBox.Position = [83 85 149 199];
+            app.CountriesListBox.Value = {};
+
+            % Create StatesListBoxLabel
+            app.StatesListBoxLabel = uilabel(app.UIFigure);
+            app.StatesListBoxLabel.BackgroundColor = [0.6627 0.651 0.8706];
+            app.StatesListBoxLabel.HorizontalAlignment = 'right';
+            app.StatesListBoxLabel.Position = [290 260 39 22];
+            app.StatesListBoxLabel.Text = 'States';
+
+            % Create StatesListBox
+            app.StatesListBox = uilistbox(app.UIFigure);
+            app.StatesListBox.Items = {};
+            app.StatesListBox.ValueChangedFcn = createCallbackFcn(app, @StatesListBoxValueChanged, true);
+            app.StatesListBox.BackgroundColor = [0.6627 0.651 0.8706];
+            app.StatesListBox.Position = [344 86 134 197];
+            app.StatesListBox.Value = {};
+
+            % Create AverageofdaysSliderLabel
+            app.AverageofdaysSliderLabel = uilabel(app.UIFigure);
+            app.AverageofdaysSliderLabel.HorizontalAlignment = 'right';
+            app.AverageofdaysSliderLabel.FontColor = [0.149 0.149 0.149];
+            app.AverageofdaysSliderLabel.Position = [521 260 92 22];
+            app.AverageofdaysSliderLabel.Text = 'Average of days';
+
+            % Create AverageofdaysSlider
+            app.AverageofdaysSlider = uislider(app.UIFigure);
+            app.AverageofdaysSlider.Limits = [1 15];
+            app.AverageofdaysSlider.ValueChangingFcn = createCallbackFcn(app, @slider_fn, true);
+            app.AverageofdaysSlider.FontColor = [0.149 0.149 0.149];
+            app.AverageofdaysSlider.Position = [626 270 150 3];
+            app.AverageofdaysSlider.Value = 1;
+
+            % Create DatatoPlotButtonGroup
+            app.DatatoPlotButtonGroup = uibuttongroup(app.UIFigure);
+            app.DatatoPlotButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @data_to_plot_radio, true);
+            app.DatatoPlotButtonGroup.Title = 'Data to Plot';
+            app.DatatoPlotButtonGroup.BackgroundColor = [0.9804 0.9804 0.7647];
+            app.DatatoPlotButtonGroup.Position = [521 110 123 106];
+
+            % Create CasesButton
+            app.CasesButton = uiradiobutton(app.DatatoPlotButtonGroup);
+            app.CasesButton.Text = 'Cases';
+            app.CasesButton.Position = [11 60 58 22];
+            app.CasesButton.Value = true;
+
+            % Create DeathsButton
+            app.DeathsButton = uiradiobutton(app.DatatoPlotButtonGroup);
+            app.DeathsButton.Text = 'Deaths';
+            app.DeathsButton.Position = [11 38 65 22];
+
+            % Create BothButton
+            app.BothButton = uiradiobutton(app.DatatoPlotButtonGroup);
+            app.BothButton.Text = 'Both';
+            app.BothButton.Position = [11 16 65 22];
+
+            % Create OptionButtonGroup
+            app.OptionButtonGroup = uibuttongroup(app.UIFigure);
+            app.OptionButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @OptionButtonGroupSelectionChanged, true);
+            app.OptionButtonGroup.Title = 'Option';
+            app.OptionButtonGroup.BackgroundColor = [0.6902 1 0.8824];
+            app.OptionButtonGroup.Position = [675 114 123 106];
+
+            % Create CumulativeButton
+            app.CumulativeButton = uiradiobutton(app.OptionButtonGroup);
+            app.CumulativeButton.Text = 'Cumulative';
+            app.CumulativeButton.Position = [11 60 82 22];
+            app.CumulativeButton.Value = true;
+
+            % Create DailyButton
+            app.DailyButton = uiradiobutton(app.OptionButtonGroup);
+            app.DailyButton.Text = 'Daily';
+            app.DailyButton.Position = [11 38 65 22];
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = Covid
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @Startup)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
